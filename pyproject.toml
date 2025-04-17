@@ -11,8 +11,11 @@ dependencies = [
     "equinox",
     "numpy",
     "jaxtyping",
+    "jaxonmodels",
     "beartype",
     "typing_extensions",
+    "gymnasium",
+    "optax>=0.2.4",
 ]
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "mkdocs"]
