@@ -18,8 +18,8 @@ class Policy(eqx.Module):
 
     def __init__(self, obs_dim: int, actions_dim: int, key: PRNGKeyArray):
         key, subkey = jax.random.split(key)
-        self.fc1 = eqx.nn.Linear(obs_dim, 32, key=key)
-        self.fc2 = eqx.nn.Linear(32, actions_dim, key=subkey)
+        self.fc1 = eqx.nn.Linear(obs_dim, 64, key=key)
+        self.fc2 = eqx.nn.Linear(64, actions_dim, key=subkey)
 
     def __call__(self, x: Array) -> Array:
         x = self.fc1(x)
@@ -68,22 +68,22 @@ def step(
     return policy, opt_state, loss_value
 
 
-env = gym.make("CartPole-v1")
+# env = gym.make("CartPole-v1")
+env = gym.make("LunarLander-v3")
 env.reset(seed=42)
 random.seed(42)
-obs_dim = 4
-actions_dim = 2
-
+obs_dim = env.observation_space.shape[0]  # pyright: ignore
+actions_dim = int(env.action_space.n)  # pyright: ignore
 
 policy = Policy(obs_dim, actions_dim, key=jax.random.key(42))
 target = Policy(obs_dim, actions_dim, key=jax.random.key(42))
 
-n_episodes = 5000
-learning_rate = 0.01
+n_episodes = 2000
+learning_rate = 0.001
 discount_factor = 0.9
 network_sync_rate = 10
 replay_memory_size = 1000
-batch_size = 32
+batch_size = 128
 
 epsilon = 1.0
 epsilon_history = []
@@ -101,6 +101,15 @@ for i in tqdm(range(n_episodes)):
 
     terminated, truncated = False, False
     eps_reward = np.array(0.0)
+    # Determine if we should render this episode
+    render_mode = "human" if i % 500 == 0 else None
+    if render_mode == "human":
+        env_render = gym.make("LunarLander-v3", render_mode="human")
+        render_state, _ = env_render.reset()
+        render_env = env_render
+    else:
+        render_env = env
+
     while not terminated and not truncated:
         if random.random() < epsilon:
             action = env.action_space.sample()
@@ -108,12 +117,21 @@ for i in tqdm(range(n_episodes)):
             action = np.array(jnp.argmax(jax.lax.stop_gradient(policy(state))))
 
         new_state, reward, terminated, truncated, _ = env.step(action)
+
+        # If we're rendering, also step through the render environment
+        if render_mode == "human":
+            render_env.step(action)
+
         eps_reward += reward
         memory.append((state, action, new_state, reward, terminated, truncated))
 
         state = new_state
         step_count += 1
-    mean_batch_rewards.append(eps_reward)
+
+    # Close the render environment if we opened one
+    if render_mode == "human":
+        render_env.close()
+    mean_batch_rewards.append(eps_reward / step_count)
     if len(memory) > batch_size:
         batch = memory.sample(batch_size)
 
