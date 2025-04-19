@@ -16,6 +16,8 @@ dependencies = [
     "typing_extensions",
     "gymnasium",
     "optax>=0.2.4",
+    "mujoco-mjx>=3.3.1",
+    "mujoco>=3.3.1",
 ]
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "mkdocs"]
@@ -38,7 +40,7 @@ order-by-type = false
 
 [tool.pyright]
 include = ["src", "tests"]
-
+reportAttributeAccessIssue = "none"
 
 [build-system]
 requires = ["hatchling"]
